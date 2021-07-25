@@ -16,10 +16,10 @@ final_colab = 0
 
 
 
-credentials = [
-
-    [sg.Text('Username'), sg.InputText(key='Username')],
-    [sg.Text('Password'), sg.InputText(key='Password', password_char='*')]
+credentials = [ [sg.Text('Username'), sg.InputText(key='Username')],
+    [sg.Text('Password'), sg.InputText(key='Password', password_char='*')],
+    [sg.Button('Log in')] 
+    ]
     # [sg.Text('Username')],
     # [sg.Text('Enter something on Row 2'), sg.InputText()]
     # [sg.Button('Ok'), sg.Button('Cancel')]
@@ -33,24 +33,38 @@ credentials = [
     #         values=[], enable_events=True, size=(40, 20), key="-FILE LIST-"
     #     )
     # ],
-]
-task_info = [  [sg.Text('Task name'), sg.InputText(key='TaskName')],
-            [sg.Text('Algorithm name'), sg.InputText(key='Algorithm')],
-            [sg.Text('Collaboration name'), sg.InputText(key='Collaboration')],
-            [sg.Text('Input (optional)'), sg.InputText(key='Input')],
-            [sg.Text('Description (optional)'), sg.InputText(key='Description')],
-            [sg.Text('Organizations (optional)'), sg.InputText(key='Organizations')],
-            [sg.Button('Send task')] ]
 
 # ----- Full layout -----
 layout = [
     [
         sg.Column(credentials),
-        sg.Column(task_info)
     ]
 ]
 
 window = sg.Window("Image Viewer", layout)
+
+task_info = [  [sg.Text('Task name'), sg.InputText(key='TaskName')],
+            [sg.Text('Algorithm name'), sg.InputText(key='Algorithm')],
+            [sg.Text('Collaboration name'), sg.Combo([], key='Collaboration', size=(30, 0))],
+            [sg.Text('Input (optional)'), sg.InputText(key='Input')],
+            [sg.Text('Description (optional)'), sg.InputText(key='Description')],
+            [sg.Text('Organizations (optional)'), sg.InputText(key='Organizations')],
+            [sg.Button('Send task')] 
+]
+
+
+main_menu = [ [sg.Text('What would you like to do:')],
+    [sg.Button('Create task')],
+    [sg.Button('Create user')],
+    [sg.Button('Create node')]
+    ]
+
+layout2 = [
+    [
+        sg.Column(task_info)
+    ]
+]
+
 
 while True:
     event, values = window.read()
@@ -78,7 +92,17 @@ while True:
 
         client.task.create(final_colab, organizations, values['TaskName'], values['Algorithm'],
         values['Description'], values['Input'])
+        client.get_results()
 
+
+    elif event == "Log in":
+        #client.authenticate(values['Username'], values['Password'])
+        #client.setup_encryption(None)
+        window.close()
+        ##Check if admin or regular user
+        window = sg.Window("Task asker", layout2)
+        collaborations = client.collaboration.list(fields = ('name'))
+        window['Collaboration'].update(value='', values = collaborations)
         #client.task.create(collaboration_id, organizations, name, image, description, tinput)
 
     	#metadata = client.post_task(name, image, 1, tinput, description, organizations)
@@ -89,7 +113,6 @@ while True:
     	#client.get_results(task_id, None, False, None)
 
     	#result_id = 10
-        client.get_results()
 
     # A file was chosen from the listbox
     elif event == "-FILE LIST-":
