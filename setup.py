@@ -11,7 +11,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 # Here you specify the meta-data of your package. The `name` argument is
 # needed in some other steps.
 setup(
-    name='v6_average_py',
+    name='v6-average-py',
     version='1.0.0',
     description='vantage6 average',
     long_description=long_description,

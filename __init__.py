@@ -4,16 +4,13 @@ from vantage6.tools.util import info
 
 def master(client, data, column_name):
     """Combine partials to global model
-
     First we collect the parties that participate in the collaboration.
     Then we send a task to all the parties to compute their partial (the
     row count and the column sum). Then we wait for the results to be
     ready. Finally when the results are ready, we combine them to a
     global average.
-
     Note that the master method also receives the (local) data of the
     node. In most usecases this data argument is not used.
-
     The client, provided in the first argument, gives an interface to
     the central server. This is needed to create tasks (for the partial
     results) and collect their results later on. Note that this client
@@ -72,7 +69,6 @@ def master(client, data, column_name):
 
 def RPC_average_partial(data, column_name):
     """Compute the average partial
-
     The data argument contains a pandas-dataframe containing the local
     data from the node.
     """
