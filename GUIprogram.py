@@ -3,6 +3,7 @@
 import PySimpleGUI as sg
 import os.path
 from vantage6.client import Client
+import time
 
 #nicobieber99/v6-mean:1.0
 server_url = "http://127.0.0.3"
@@ -12,59 +13,55 @@ client = Client(server_url, port, api_path, verbose = True)
 
 final_colab = 0
 
-# First the window layout in 2 columns
+def create_window(window_title):
 
-
-
-credentials = [ [sg.Text('Username'), sg.InputText(key='Username')],
-    [sg.Text('Password'), sg.InputText(key='Password', password_char='*')],
-    [sg.Button('Log in')] 
-    ]
-    # [sg.Text('Username')],
-    # [sg.Text('Enter something on Row 2'), sg.InputText()]
-    # [sg.Button('Ok'), sg.Button('Cancel')]
-      # ],
-    # [
-    #     sg.Text("Password"),
-    #     sg.In(size=(25, 1), enable_events=True, key="-PASSWORD-"),
-    # ],
-    # [
-    #     sg.Listbox(
-    #         values=[], enable_events=True, size=(40, 20), key="-FILE LIST-"
-    #     )
-    # ],
-
-# ----- Full layout -----
-layout = [
-    [
-        sg.Column(credentials),
-    ]
-]
-
-window = sg.Window("Image Viewer", layout)
-
-task_info = [  [sg.Text('Task name'), sg.InputText(key='TaskName')],
-            [sg.Text('Algorithm name'), sg.InputText(key='Algorithm')],
-            [sg.Text('Collaboration name'), sg.Combo([], key='Collaboration', size=(30, 0))],
-            [sg.Text('Input (optional)'), sg.InputText(key='Input')],
-            [sg.Text('Description (optional)'), sg.InputText(key='Description')],
-            [sg.Text('Organizations (optional)'), sg.InputText(key='Organizations')],
-            [sg.Button('Send task')] 
-]
-
-
-main_menu = [ [sg.Text('What would you like to do:')],
-    [sg.Button('Create task')],
-    [sg.Button('Create user')],
-    [sg.Button('Create node')]
+    if window_title == "Login":
+        window_layout = [ [sg.Text('Username'), sg.InputText(key='Username')],
+        [sg.Text('Password'), sg.InputText(key='Password', password_char='*')],
+        [sg.Button('Log in')]
     ]
 
-layout2 = [
-    [
-        sg.Column(task_info)
-    ]
-]
+    elif window_title == "Main menu":
+        window_layout = [ [sg.Text('What would you like to do:')],
+                    [sg.Button('Create task')],
+                    [sg.Button('Create user')],
+                    [sg.Button('Create node')]
+        ]
 
+    elif window_title == "Create task":
+        window_layout = [  [sg.Text('Task name'), sg.InputText(key='TaskName')],
+                    [sg.Text('Algorithm name'), sg.InputText(key='Algorithm')],
+                    [sg.Text('Collaboration name'), sg.Combo([], key='Collaboration', size=(30, 0))],
+                    [sg.Text('Input (optional)'), sg.InputText(key='Input')],
+                    [sg.Text('Description (optional)'), sg.InputText(key='Description')],
+                    [sg.Text('Organizations (optional)'), sg.Listbox([], size =(40,10), select_mode = 'extended', key='Organizations')],
+                    [sg.Text('Result:'), sg.Text(size =(40,10), key='Task_result')],
+                    [sg.Button('Send task')],
+                    [sg.Button('Back')]
+        ]
+
+    elif window_title == "Create user":
+        window_layout = [  [sg.Text('Username'), sg.InputText(key='Username')],
+                    [sg.Text('Password'), sg.InputText(key='Password')],
+                    [sg.Text('First name'), sg.InputText(key='First_name')],
+                    [sg.Text('Last name'), sg.InputText(key='Last_name')],
+                    [sg.Text('Organization'), sg.Listbox([], size =(40,10), select_mode = 'single', key='Organization')],
+                    [sg.Text('Role'), sg.Listbox([], size =(40,10), select_mode = 'single', key='Roles')],
+                    [sg.Button('Finish')],
+                    [sg.Button('Back')]
+        ]
+
+    layout = [
+        [
+            sg.Column(window_layout),
+        ]
+    ]
+
+    window = sg.Window("Current window", layout, finalize = True)
+    return(window)
+
+
+window = create_window("Login")
 
 while True:
     event, values = window.read()
@@ -72,37 +69,61 @@ while True:
         break
     # Folder name was filled in, make a list of files in the folder
     elif event == 'Send task':
-        client.authenticate(values['Username'], values['Password'])
-        client.setup_encryption(None)
-        collaboration1 = client.collaboration.list(fields = ('id', 'name'))
-
-        for collaborations in collaboration1:
-    	    if collaborations.get('name') == values['Collaboration']:
-                final_colab = collaborations.get('id')
-
-        organizations = [1,2]
-        if values['Organizations'] != '':
-            organizations.append(int(values['Organizations']))
-
-        ## TODO: implement parsing and fetching of org id for organizattion selection
-    	##if organizations_run != ''
-    	##	organizations = client.organization.list(fields = ('id', 'name'))
-    	##	for organization in Organizations
-        print(values['TaskName'], values['Algorithm'])
-
-        client.task.create(final_colab, organizations, values['TaskName'], values['Algorithm'],
-        values['Description'], values['Input'])
-        client.get_results()
+        colab_value = values['Collaboration'].get('id')
+        print(values['Organizations'])
+        organization = []
+        organization.append(client.collaboration.get(colab_value)["organizations"][0]["id"])
+        tinput = {
+	       'master': 'true',
+           'method': 'master',
+           'args': [],
+           'kwargs': {
+                'column_name': values['Input']
+            }
+        }
+        task = client.task.create(colab_value, organization, values['TaskName'], values['Algorithm'],
+        values['Description'], tinput)
+        task_id = task['id']
+        task_info = client.task.get(task_id)
+        attempts = 0
+        while not task_info.get("complete") or attempts >10:
+            task_info = client.task.get(task_id)
+            attempts += 1
+            time.sleep(4)
+        window['Task_result'].update(client.result.get(task_info['results'][0]['id'])['result'])
 
 
     elif event == "Log in":
-        #client.authenticate(values['Username'], values['Password'])
-        #client.setup_encryption(None)
+        client.authenticate(values['Username'], values['Password'])
+        client.setup_encryption(None)
         window.close()
         ##Check if admin or regular user
-        window = sg.Window("Task asker", layout2)
-        collaborations = client.collaboration.list(fields = ('name'))
+        window = create_window("Main menu")
+
+
+    elif event == 'Create task':
+        window.close()
+        window = create_window("Create task")
+        collaborations = client.collaboration.list(fields = ('id', 'name'))
+        organizationList = client.organization.list(fields = ('id', 'name'))
         window['Collaboration'].update(value='', values = collaborations)
+        window['Organizations'].update(values = organizationList)
+
+    elif event == 'Create user':
+        window.close()
+        window = create_window("Create user")
+        organizationList = client.organization.list(fields = ('id', 'name'))
+        window['Organization'].update(values = organizationList)
+        roleList = client.role.list(fields = ('id', 'name'))
+        window['Roles'].update(values = roleList)
+
+    elif event == 'Finish':
+        ##ERROR LIST HAS NO ATTRIBUTE GET PROBLEM HERE
+        client.user.create(values['Username'], values['First_name'], values['Last_name'], values['Password'], values['Organization'].get('id'), values['Roles'].get('id'), [])
+
+    elif event == 'Back':
+        window.close()
+        window = create_window("Main menu")
         #client.task.create(collaboration_id, organizations, name, image, description, tinput)
 
     	#metadata = client.post_task(name, image, 1, tinput, description, organizations)
