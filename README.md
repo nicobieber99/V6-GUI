@@ -1,4 +1,5 @@
+GUI program needs:
+PySimpleGUI
+vantage6
 
-
-This is a program that claculates the mean
-
+rules.txt is just a list of all the rules, it can be ignored
